@@ -172,6 +172,11 @@ object MorphoSdkHelper {
                 return Pair(false, sdkUnavailableReason)
             }
 
+            // Ensure Morpho SDK internal USBManager context is initialized for package verification
+            try {
+                com.morpho.android.usb.USBManager.context = context.applicationContext
+            } catch (_: Throwable) {}
+
             // Test instantiation of MorphoDevice to verify JNI bindings
             val testDevice = MorphoDevice()
             testDevice.closeDevice()
@@ -206,7 +211,7 @@ object MorphoSdkHelper {
     }
 
     /**
-     * Opens MorphoDevice with openUsbDeviceFD.
+     * Opens MorphoDevice with openUsbDeviceFD using the open Android file descriptor.
      */
     fun openDeviceFd(
         context: Context,
@@ -221,8 +226,14 @@ object MorphoSdkHelper {
         }
 
         return try {
+            try {
+                com.morpho.android.usb.USBManager.context = context.applicationContext
+            } catch (_: Throwable) {}
+
             val device = MorphoDevice()
+            logCallback?.invoke("Calling openUsbDeviceFD(bus=$bus, addr=$address, fd=$fd)...")
             val ret = device.openUsbDeviceFD(bus, address, fd, 0)
+            logCallback?.invoke("openUsbDeviceFD result code: $ret")
             if (ret == ErrorCodes.MORPHO_OK) {
                 Pair(device, ErrorCodes.MORPHO_OK)
             } else {
@@ -233,6 +244,56 @@ object MorphoSdkHelper {
             }
         } catch (t: Throwable) {
             Log.e(TAG, "Error in openDeviceFd", t)
+            logCallback?.invoke("openDeviceFd exception: ${t.message}")
+            Pair(null, -1)
+        }
+    }
+
+    /**
+     * Fallback device opener using Morpho's native name enumeration.
+     */
+    fun openDeviceByName(
+        context: Context,
+        logCallback: ((String) -> Unit)? = null
+    ): Pair<MorphoDevice?, Int> {
+        val (available, _) = checkSdkAvailability(context, logCallback = logCallback)
+        if (!available) {
+            return Pair(null, -999)
+        }
+
+        return try {
+            try {
+                com.morpho.android.usb.USBManager.context = context.applicationContext
+            } catch (_: Throwable) {}
+
+            val device = MorphoDevice()
+            val nbDevices = com.morpho.morphosmart.sdk.CustomInteger()
+            logCallback?.invoke("Enumerating via initUsbDevicesNameEnum()...")
+            val enumRet = device.initUsbDevicesNameEnum(nbDevices)
+            logCallback?.invoke("initUsbDevicesNameEnum returned: $enumRet, devices count: ${nbDevices.getValueOf()}")
+
+            if (enumRet == ErrorCodes.MORPHO_OK && nbDevices.getValueOf() > 0) {
+                val sensorName = device.getUsbDeviceName(0)
+                logCallback?.invoke("Found Morpho sensor: '$sensorName'. Calling openUsbDevice...")
+                val openRet = device.openUsbDevice(sensorName, 0)
+                logCallback?.invoke("openUsbDevice returned: $openRet")
+                if (openRet == ErrorCodes.MORPHO_OK) {
+                    Pair(device, ErrorCodes.MORPHO_OK)
+                } else {
+                    try {
+                        device.closeDevice()
+                    } catch (_: Throwable) {}
+                    Pair(null, openRet)
+                }
+            } else {
+                try {
+                    device.closeDevice()
+                } catch (_: Throwable) {}
+                Pair(null, enumRet)
+            }
+        } catch (t: Throwable) {
+            Log.e(TAG, "Error in openDeviceByName", t)
+            logCallback?.invoke("openDeviceByName exception: ${t.message}")
             Pair(null, -1)
         }
     }

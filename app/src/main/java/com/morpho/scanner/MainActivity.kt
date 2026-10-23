@@ -76,6 +76,7 @@ class MainActivity : Activity() {
     private val fullLogHistory = StringBuilder()
     private val mainHandler = Handler(Looper.getMainLooper())
     private var isReceiverRegistered = false
+    private val isConnecting = java.util.concurrent.atomic.AtomicBoolean(false)
 
     private val usbReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -84,21 +85,19 @@ class MainActivity : Activity() {
 
             when (action) {
                 ACTION_USB_PERMISSION -> {
-                    synchronized(this) {
-                        val device: UsbDevice? = getDeviceFromIntent(intent)
-                        val granted = intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)
-                        if (granted && device != null) {
-                            appendLog("USB Permission GRANTED for ${device.deviceName}")
-                            targetDevice = device
-                            initDeviceConnection(device)
-                        } else {
-                            appendLog("USB Permission was DENIED by the user.")
-                            updateStatus("Permission Denied", false, Color.parseColor("#EF4444"))
-                            showErrorBanner(
-                                "USB Access Denied",
-                                "Permission to access the Morpho scanner was denied. Please re-plug the USB OTG cable and tap 'Allow' when the system prompt appears."
-                            )
-                        }
+                    val device: UsbDevice? = getDeviceFromIntent(intent)
+                    val granted = intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)
+                    if (granted && device != null) {
+                        appendLog("USB Permission GRANTED for ${device.deviceName}")
+                        targetDevice = device
+                        startDeviceConnection(device)
+                    } else {
+                        appendLog("USB Permission was DENIED by the user.")
+                        updateStatus("Permission Denied", false, Color.parseColor("#EF4444"))
+                        showErrorBanner(
+                            "USB Access Denied",
+                            "Permission to access the Morpho scanner was denied. Please re-plug the USB OTG cable and tap 'Allow' when the system prompt appears."
+                        )
                     }
                 }
                 UsbManager.ACTION_USB_DEVICE_ATTACHED -> {
@@ -126,7 +125,7 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Global crash guard to prevent silent exits
+        // Global crash guard to capture and persist any uncaught errors
         setupCrashHandler()
 
         setContentView(R.layout.activity_main)
@@ -136,6 +135,9 @@ class MainActivity : Activity() {
         bindViews()
         setupListeners()
         registerUsbReceiver()
+
+        // Check if there was a recorded crash from the previous execution
+        checkPreviousCrashLog()
 
         // Early preload of Morpho native drivers with diagnostics logging
         MorphoSdkHelper.checkSdkAvailability(this) { msg ->
@@ -172,18 +174,24 @@ class MainActivity : Activity() {
         val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
             Log.e(TAG, "Uncaught exception on ${thread.name}", throwable)
-            mainHandler.post {
-                try {
-                    AlertDialog.Builder(this)
-                        .setTitle("Diagnostic Notice")
-                        .setMessage("An unexpected error occurred:\n\n${throwable.message}\n\n${throwable.stackTraceToString().take(400)}")
-                        .setPositiveButton("OK", null)
-                        .show()
-                } catch (_: Throwable) {
-                    defaultHandler?.uncaughtException(thread, throwable)
-                }
-            }
+            try {
+                val crashFile = java.io.File(filesDir, "last_crash.log")
+                crashFile.writeText("Crash on thread [${thread.name}]:\n${throwable.message}\n${throwable.stackTraceToString()}")
+            } catch (_: Throwable) {}
+
+            defaultHandler?.uncaughtException(thread, throwable)
         }
+    }
+
+    private fun checkPreviousCrashLog() {
+        try {
+            val crashFile = java.io.File(filesDir, "last_crash.log")
+            if (crashFile.exists()) {
+                val crashText = crashFile.readText()
+                crashFile.delete()
+                appendLog("⚠️ Previous session crash report:\n$crashText")
+            }
+        } catch (_: Throwable) {}
     }
 
     private fun bindViews() {
@@ -293,13 +301,15 @@ class MainActivity : Activity() {
     }
 
     private fun handleDeviceFound(device: UsbDevice) {
-        tvDeviceInfo.text = "Morpho MSO 1300 E2 (VID: ${device.vendorId}, PID: ${device.productId})"
+        runOnUiThread {
+            tvDeviceInfo.text = "Morpho MSO 1300 E2 (VID: ${device.vendorId}, PID: ${device.productId})"
+        }
 
         if (!usbManager.hasPermission(device)) {
             requestUsbPermission(device)
         } else {
             appendLog("USB permission already active for ${device.deviceName}")
-            initDeviceConnection(device)
+            startDeviceConnection(device)
         }
     }
 
@@ -331,77 +341,139 @@ class MainActivity : Activity() {
     }
 
     /**
-     * Initializes device connection, verifies hardware endpoints, and initializes MorphoSdkHelper.
+     * Initiates asynchronous hardware connection on a worker thread with concurrency deduplication.
      */
-    private fun initDeviceConnection(device: UsbDevice) {
-        try {
-            val connection = usbManager.openDevice(device)
-            if (connection == null) {
+    private fun startDeviceConnection(device: UsbDevice) {
+        if (!isConnecting.compareAndSet(false, true)) {
+            appendLog("Connection attempt already in progress, skipping duplicate event.")
+            return
+        }
+
+        updateStatus("Connecting to Morpho Scanner...", false, Color.parseColor("#0284C7"))
+
+        thread(name = "MorphoConnectThread") {
+            try {
+                performDeviceConnection(device)
+            } catch (t: Throwable) {
+                Log.e(TAG, "Unhandled error during device connection", t)
+                mainHandler.post {
+                    appendLog("Connection exception: ${t.message}")
+                    showErrorBanner("Connection Failure", t.message ?: "Unknown error")
+                    updateStatus("Connection Failed", false, Color.parseColor("#EF4444"))
+                }
+            } finally {
+                isConnecting.set(false)
+            }
+        }
+    }
+
+    /**
+     * Connects to the Morpho hardware.
+     * CRITICAL: Interface 0 must NOT be claimed in Java via connection.claimInterface(),
+     * because libusb inside the native Morpho driver requires exclusive rights to claim the interface.
+     */
+    private fun performDeviceConnection(device: UsbDevice) {
+        // Step 1: Clean up any prior session
+        releaseDeviceSession()
+
+        // Step 2: Open UsbDeviceConnection from Android UsbManager
+        val connection = usbManager.openDevice(device)
+        if (connection == null) {
+            mainHandler.post {
                 appendLog("Failed to open UsbDeviceConnection.")
                 updateStatus("USB Busy / Inaccessible", false, Color.parseColor("#EF4444"))
                 showErrorBanner(
                     "USB Connection Blocked",
                     "Cannot open Morpho scanner USB port. If an official UIDAI/Morpho RD Service is installed on this phone, please force-stop it so this tool can access the hardware."
                 )
-                return
             }
-            usbConnection = connection
+            return
+        }
+        usbConnection = connection
 
-            // Inspect hardware interface & endpoints safely
-            inspectUsbHardware(device, connection)
+        // Step 3: Inspect hardware interface & endpoints WITHOUT claiming them
+        inspectUsbHardware(device)
 
-            // Extract bus, address, fd for Morpho SDK
-            val fd = connection.fileDescriptor
-            val (bus, address) = parseBusAndAddress(device.deviceName)
+        // Step 4: Extract bus, address, fd for Morpho SDK
+        val fd = connection.fileDescriptor
+        val (bus, address) = parseBusAndAddress(device.deviceName)
 
+        mainHandler.post {
             appendLog("Opening Morpho SDK with FD: bus=$bus, addr=$address, fd=$fd")
+        }
 
-            // Check if proprietary native libraries (.so) are available
-            val (sdkAvailable, sdkReason) = MorphoSdkHelper.checkSdkAvailability(this) { msg ->
-                appendLog(msg)
-            }
-            if (!sdkAvailable) {
+        // Step 5: Check native library availability
+        val (sdkAvailable, sdkReason) = MorphoSdkHelper.checkSdkAvailability(this) { msg ->
+            mainHandler.post { appendLog(msg) }
+        }
+        if (!sdkAvailable) {
+            mainHandler.post {
                 appendLog("SDK notice: $sdkReason")
                 updateStatus("Morpho USB Ready (Direct Mode)", true, Color.parseColor("#10B981"))
                 showErrorBanner("Native SDK Libraries Needed For Hardware Capture", sdkReason)
-                return
             }
+            return
+        }
 
-            // Attempt to initialize MorphoDevice via openUsbDeviceFD
-            val (morphoDev, code) = MorphoSdkHelper.openDeviceFd(this, bus, address, fd) { msg ->
-                appendLog(msg)
+        // Step 6: Connect MorphoDevice via openUsbDeviceFD
+        var (morphoDev, code) = MorphoSdkHelper.openDeviceFd(this, bus, address, fd) { msg ->
+            mainHandler.post { appendLog(msg) }
+        }
+
+        // Fallback: If openUsbDeviceFD did not succeed, try native enumeration & openDevice
+        if (code != ErrorCodes.MORPHO_OK || morphoDev == null) {
+            mainHandler.post {
+                appendLog("openUsbDeviceFD returned $code. Trying device enumeration fallback...")
             }
-            if (code == ErrorCodes.MORPHO_OK && morphoDev != null) {
-                activeMorphoDevice = morphoDev
+            val (altDev, altCode) = MorphoSdkHelper.openDeviceByName(this) { msg ->
+                mainHandler.post { appendLog(msg) }
+            }
+            if (altCode == ErrorCodes.MORPHO_OK && altDev != null) {
+                morphoDev = altDev
+                code = altCode
+            }
+        }
+
+        if (code == ErrorCodes.MORPHO_OK && morphoDev != null) {
+            activeMorphoDevice = morphoDev
+            mainHandler.post {
                 appendLog("MorphoDevice opened successfully (MORPHO_OK).")
                 updateStatus("Morpho MSO 1300 E2 Ready", true, Color.parseColor("#10B981"))
                 hideErrorBanner()
                 Toast.makeText(this, "Morpho Scanner Connected & Ready!", Toast.LENGTH_SHORT).show()
-            } else {
-                appendLog("MorphoDevice openUsbDeviceFD returned: $code")
-                updateStatus("Init Code: $code", true, Color.parseColor("#F59E0B"))
-                showErrorBanner("Device Initialization Notice", "openUsbDeviceFD returned code $code.")
             }
-        } catch (e: Throwable) {
-            Log.e(TAG, "Error in initDeviceConnection", e)
-            appendLog("Connection error: ${e.message}")
-            showErrorBanner("Connection Error", e.message ?: "Unknown error")
+        } else {
+            mainHandler.post {
+                appendLog("MorphoDevice open returned code: $code")
+                updateStatus("Init Code: $code", true, Color.parseColor("#F59E0B"))
+                showErrorBanner("Device Initialization Notice", "Morpho initialization returned code $code.")
+            }
         }
     }
 
-    private fun inspectUsbHardware(device: UsbDevice, connection: UsbDeviceConnection) {
+    /**
+     * Inspects interfaces and endpoints from Android descriptor metadata.
+     * NEVER claims the interface here, avoiding resource locks with libusb.
+     */
+    private fun inspectUsbHardware(device: UsbDevice) {
         try {
             val ifaceCount = device.interfaceCount
-            appendLog("USB Device Interfaces: $ifaceCount")
+            mainHandler.post {
+                appendLog("USB Device Interfaces: $ifaceCount")
+            }
             if (ifaceCount > 0) {
-                val intf: UsbInterface = device.getInterface(0)
-                val claimed = connection.claimInterface(intf, true)
-                appendLog("Interface 0 claimed: $claimed (${intf.endpointCount} endpoints)")
-
-                for (i in 0 until intf.endpointCount) {
-                    val ep: UsbEndpoint = intf.getEndpoint(i)
-                    val dir = if (ep.direction == UsbConstants.USB_DIR_IN) "IN" else "OUT"
-                    appendLog("  Endpoint $i: $dir, maxPacket=${ep.maxPacketSize}")
+                for (i in 0 until ifaceCount) {
+                    val intf: UsbInterface = device.getInterface(i)
+                    mainHandler.post {
+                        appendLog("  Interface $i: class=${intf.interfaceClass}, sub=${intf.interfaceSubclass}, endpoints=${intf.endpointCount}")
+                    }
+                    for (j in 0 until intf.endpointCount) {
+                        val ep: UsbEndpoint = intf.getEndpoint(j)
+                        val dir = if (ep.direction == UsbConstants.USB_DIR_IN) "IN" else "OUT"
+                        mainHandler.post {
+                            appendLog("    Endpoint $j: $dir, maxPacket=${ep.maxPacketSize}")
+                        }
+                    }
                 }
             }
         } catch (t: Throwable) {
@@ -412,11 +484,11 @@ class MainActivity : Activity() {
     private fun parseBusAndAddress(deviceName: String): Pair<Int, Int> {
         return try {
             val parts = deviceName.split("/").filter { it.isNotBlank() }
-            val bus = parts.getOrNull(parts.size - 2)?.toIntOrNull() ?: 0
-            val address = parts.getOrNull(parts.size - 1)?.toIntOrNull() ?: 0
-            Pair(bus, address)
+            val bus = parts.getOrNull(parts.size - 2)?.toIntOrNull() ?: 1
+            val address = parts.getOrNull(parts.size - 1)?.toIntOrNull() ?: 2
+            Pair(if (bus > 0) bus else 1, if (address > 0) address else 2)
         } catch (_: Exception) {
-            Pair(0, 0)
+            Pair(1, 2)
         }
     }
 
@@ -647,8 +719,11 @@ class MainActivity : Activity() {
         }
     }
 
+    @Synchronized
     private fun releaseDeviceSession() {
-        MorphoSdkHelper.closeDevice(activeMorphoDevice)
+        try {
+            MorphoSdkHelper.closeDevice(activeMorphoDevice)
+        } catch (_: Throwable) {}
         activeMorphoDevice = null
 
         try {

@@ -156,6 +156,23 @@ app/build/outputs/apk/debug/app-debug.apk
 
 ---
 
+## Hardware Troubleshooting & Diagnostics
+
+### 1. USB Interface Contention & libusb Handshake
+- The MorphoSmart SDK utilizes `libusb1.0.so` and `libMSO100.so` to communicate with the optical sensor.
+- When opening the device via `MorphoDevice.openUsbDeviceFD(...)`, Android's `UsbDeviceConnection` file descriptor is shared with native code.
+- **Critical Requirement**: Android Java code must **not** claim Interface 0 via `connection.claimInterface(...)` before passing the file descriptor to the native layer, as this prevents `libusb` from claiming the USB device endpoints and causes a kernel driver contention crash.
+
+### 2. Android 14+ USB Permission Strict Handling
+- `PendingIntent` creation for `ACTION_USB_PERMISSION` requires `FLAG_MUTABLE` on Android 12+ (SDK 31+) with explicit package setting (`intent.setPackage(...)`) to comply with Android 14 security sandboxing.
+- `USBManager.context` must point to `context.applicationContext` so that package name and licensing checks succeed across device lifecycle events.
+
+### 3. Persistent Diagnostics & Crash Logging
+- In-app diagnostics logging captures every native library load event, USB broadcast, and capture state transition.
+- Uncaught exceptions are stored to persistent app storage (`last_crash.log`) and rendered in the in-app Activity Log on the subsequent launch for rapid debugging.
+
+---
+
 ## License & Third-Party Notices
 
 - **MorphoSmart™ SDK & Native Binaries**: Proprietary software © IDEMIA / Safran Identity & Security. All rights reserved.

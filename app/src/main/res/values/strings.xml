@@ -1,0 +1,12 @@
+<resources>
+    <string name="app_name">Morpho Scanner</string>
+    <string name="title_app">Morpho MSO 1300 E2</string>
+    <string name="subtitle_app">Direct Biometric Raw Capture</string>
+    <string name="btn_connect">Connect Scanner</string>
+    <string name="btn_scan">Scan &amp; Save Fingerprint</string>
+    <string name="btn_test_demo">Simulate Test Scan</string>
+    <string name="status_disconnected">Status: Scanner Disconnected</string>
+    <string name="status_connected">Status: Morpho MSO 1300 E2 Connected</string>
+    <string name="status_capturing">Capturing live biometric image...</string>
+    <string name="placeholder_hint">Fingerprint preview will appear here</string>
+</resources>

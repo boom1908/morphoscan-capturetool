@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Safran Morpho MSO 1300 E2 USB Scanner (Vendor ID: 1947 / 0x079B) -->
+    <usb-device vendor-id="1947" />
+</resources>

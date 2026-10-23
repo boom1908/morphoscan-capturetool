@@ -1,0 +1,6 @@
+{
+  "name": "Morpho Scanner",
+  "description": "Raw fingerprint biometric capture tool for Morpho MSO 1300 E2 USB scanners",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

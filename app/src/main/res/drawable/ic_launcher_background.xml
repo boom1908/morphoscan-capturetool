@@ -4,10 +4,20 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+    <!-- Obsidian Black Base -->
     <path
-        android:fillColor="#0F172A"
+        android:fillColor="#0B0B0D"
         android:pathData="M0,0h108v108h-108z" />
+
+    <!-- Subtle Deep Crimson Angle Texture -->
     <path
-        android:fillColor="#1E293B"
+        android:fillColor="#151518"
         android:pathData="M0,0 L108,108 L108,0 Z" />
+
+    <!-- Subtle Crimson Core Glow Ring -->
+    <path
+        android:strokeColor="#25080B"
+        android:strokeWidth="12"
+        android:fillColor="#00000000"
+        android:pathData="M54,18 A36,36 0 1 0 54,90 A36,36 0 1 0 54,18 Z" />
 </vector>

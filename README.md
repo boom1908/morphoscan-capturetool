@@ -3,9 +3,9 @@
 [![Platform: Android](https://img.shields.io/badge/Platform-Android%208.0%2B-3DDC84.svg?style=flat&logo=android)](https://developer.android.com/)
 [![Architecture: arm64-v8a](https://img.shields.io/badge/Architecture-arm64--v8a-blue.svg)](https://developer.android.com/ndk/guides/abis)
 [![Hardware: Safran Morpho MSO 1300](https://img.shields.io/badge/Hardware-MSO%201300%20E%2FE2%2FE3-orange.svg)](https://www.idemia.com/)
-[![UI: Jetpack Compose M3](https://img.shields.io/badge/UI-Jetpack%20Compose%20M3-4285F4.svg)](https://developer.android.com/jetpack/compose)
+[![Theme: Obsidian Crimson](https://img.shields.io/badge/Theme-Obsidian%20%26%20Crimson-8B0000.svg)](https://github.com/)
 
-A dedicated, high-performance Android biometric fingerprint acquisition application engineered specifically for **IDEMIA / Safran MorphoSmart™ MSO 1300 Series (MSO 1300 E, E2, and E3)** optical fingerprint scanners over USB OTG.
+A dedicated, high-performance Android biometric fingerprint acquisition application engineered specifically for **IDEMIA / Safran MorphoSmart™ MSO 1300 Series (MSO 1300 E, E2, and E3)** optical fingerprint scanners over USB OTG. Styled in an **Obsidian Black & Deep Crimson** aesthetic with razor-sharp vector biometric branding.
 
 ---
 

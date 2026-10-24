@@ -49,6 +49,13 @@ class MainActivity : Activity() {
         private const val TAG = "MorphoScanner"
         private const val ACTION_USB_PERMISSION = "com.morpho.scanner.USB_PERMISSION"
         const val MORPHO_VENDOR_ID = 1947 // 0x079B Safran Morpho
+
+        // Brand Theme Palette (Obsidian Black, Deep Crimson, Blood Red, Soft White, Muted Grey)
+        val COLOR_BLOOD_RED = Color.parseColor("#C1121F")
+        val COLOR_DEEP_CRIMSON = Color.parseColor("#8B0000")
+        val COLOR_MUTED_GREY = Color.parseColor("#85858D")
+        val COLOR_SUCCESS_GREEN = Color.parseColor("#10B981")
+        val COLOR_WARNING_AMBER = Color.parseColor("#F59E0B")
     }
 
     private lateinit var usbManager: UsbManager
@@ -93,7 +100,7 @@ class MainActivity : Activity() {
                         startDeviceConnection(device)
                     } else {
                         appendLog("USB Permission was DENIED by the user.")
-                        updateStatus("Permission Denied", false, Color.parseColor("#EF4444"))
+                        updateStatus("Permission Denied", false, COLOR_BLOOD_RED)
                         showErrorBanner(
                             "USB Access Denied",
                             "Permission to access the Morpho scanner was denied. Please re-plug the USB OTG cable and tap 'Allow' when the system prompt appears."
@@ -113,7 +120,7 @@ class MainActivity : Activity() {
                     if (device != null && (targetDevice == null || device.deviceId == targetDevice?.deviceId)) {
                         appendLog("Morpho device detached. Cleaning up session.")
                         releaseDeviceSession()
-                        updateStatus("Status: Scanner Disconnected", false, Color.parseColor("#94A3B8"))
+                        updateStatus("Status: Scanner Disconnected", false, COLOR_MUTED_GREY)
                         tvDeviceInfo.text = "Morpho MSO 1300 E2 (Disconnected)"
                         hideErrorBanner()
                     }
@@ -212,7 +219,7 @@ class MainActivity : Activity() {
         tvErrorTitle = findViewById(R.id.tvErrorTitle)
         tvErrorText = findViewById(R.id.tvErrorText)
 
-        updateStatus("Status: Scanner Disconnected", false, Color.parseColor("#94A3B8"))
+        updateStatus("Status: Scanner Disconnected", false, COLOR_MUTED_GREY)
     }
 
     private fun setupListeners() {
@@ -293,7 +300,7 @@ class MainActivity : Activity() {
         } else {
             targetDevice = null
             tvDeviceInfo.text = "No scanner detected. Connect Morpho USB OTG or use Simulate."
-            updateStatus("Scanner Not Found", false, Color.parseColor("#F59E0B"))
+            updateStatus("Scanner Not Found", false, COLOR_WARNING_AMBER)
             if (forcePrompt) {
                 Toast.makeText(this, "No Morpho scanner detected on USB OTG", Toast.LENGTH_SHORT).show()
             }
@@ -319,7 +326,7 @@ class MainActivity : Activity() {
     private fun requestUsbPermission(device: UsbDevice) {
         try {
             appendLog("Requesting USB permission for ${device.deviceName}...")
-            updateStatus("Requesting Permission...", false, Color.parseColor("#0284C7"))
+            updateStatus("Requesting Permission...", false, COLOR_BLOOD_RED)
 
             val intent = Intent(ACTION_USB_PERMISSION).apply {
                 setPackage(packageName) // Mandatory on Android 14+ for FLAG_MUTABLE
@@ -349,7 +356,7 @@ class MainActivity : Activity() {
             return
         }
 
-        updateStatus("Connecting to Morpho Scanner...", false, Color.parseColor("#0284C7"))
+        updateStatus("Connecting to Morpho Scanner...", false, COLOR_BLOOD_RED)
 
         thread(name = "MorphoConnectThread") {
             try {
@@ -359,7 +366,7 @@ class MainActivity : Activity() {
                 mainHandler.post {
                     appendLog("Connection exception: ${t.message}")
                     showErrorBanner("Connection Failure", t.message ?: "Unknown error")
-                    updateStatus("Connection Failed", false, Color.parseColor("#EF4444"))
+                    updateStatus("Connection Failed", false, COLOR_BLOOD_RED)
                 }
             } finally {
                 isConnecting.set(false)
@@ -381,7 +388,7 @@ class MainActivity : Activity() {
         if (connection == null) {
             mainHandler.post {
                 appendLog("Failed to open UsbDeviceConnection.")
-                updateStatus("USB Busy / Inaccessible", false, Color.parseColor("#EF4444"))
+                updateStatus("USB Busy / Inaccessible", false, COLOR_BLOOD_RED)
                 showErrorBanner(
                     "USB Connection Blocked",
                     "Cannot open Morpho scanner USB port. If an official UIDAI/Morpho RD Service is installed on this phone, please force-stop it so this tool can access the hardware."
@@ -409,7 +416,7 @@ class MainActivity : Activity() {
         if (!sdkAvailable) {
             mainHandler.post {
                 appendLog("SDK notice: $sdkReason")
-                updateStatus("Morpho USB Ready (Direct Mode)", true, Color.parseColor("#10B981"))
+                updateStatus("Morpho USB Ready (Direct Mode)", true, COLOR_SUCCESS_GREEN)
                 showErrorBanner("Native SDK Libraries Needed For Hardware Capture", sdkReason)
             }
             return
@@ -438,14 +445,14 @@ class MainActivity : Activity() {
             activeMorphoDevice = morphoDev
             mainHandler.post {
                 appendLog("MorphoDevice opened successfully (MORPHO_OK).")
-                updateStatus("Morpho MSO 1300 E2 Ready", true, Color.parseColor("#10B981"))
+                updateStatus("Morpho MSO 1300 E2 Ready", true, COLOR_SUCCESS_GREEN)
                 hideErrorBanner()
                 Toast.makeText(this, "Morpho Scanner Connected & Ready!", Toast.LENGTH_SHORT).show()
             }
         } else {
             mainHandler.post {
                 appendLog("MorphoDevice open returned code: $code")
-                updateStatus("Init Code: $code", true, Color.parseColor("#F59E0B"))
+                updateStatus("Init Code: $code", true, COLOR_WARNING_AMBER)
                 showErrorBanner("Device Initialization Notice", "Morpho initialization returned code $code.")
             }
         }
@@ -509,7 +516,7 @@ class MainActivity : Activity() {
             return
         }
 
-        updateStatus("Capturing... Place finger on sensor", true, Color.parseColor("#06B6D4"))
+        updateStatus("Capturing... Place finger on sensor", true, COLOR_BLOOD_RED)
         appendLog("Acquiring raw image from Morpho scanner (timeout: 10,000ms)...")
 
         thread(name = "BiometricCaptureThread") {
@@ -528,25 +535,25 @@ class MainActivity : Activity() {
                             val bitmap = decodeRawToBitmap(rawBytes, width, height)
                             displayFingerprint(bitmap, "${width}x${height} raw 8-bit (${rawBytes.size} bytes)")
                             saveFingerprintToStorage(bitmap, "Raw_Scan")
-                            updateStatus("Fingerprint Captured & Saved", true, Color.parseColor("#10B981"))
+                            updateStatus("Fingerprint Captured & Saved", true, COLOR_SUCCESS_GREEN)
                         }
                     } else {
                         mainHandler.post {
                             appendLog("Capture returned MORPHO_OK but raw buffer was null.")
-                            updateStatus("No Image Data", true, Color.parseColor("#F59E0B"))
+                            updateStatus("No Image Data", true, COLOR_WARNING_AMBER)
                         }
                     }
                 } else {
                     mainHandler.post {
                         appendLog("Scanner capture returned code: $retCode")
-                        updateStatus("Scan Failed (Code $retCode)", true, Color.parseColor("#EF4444"))
+                        updateStatus("Scan Failed (Code $retCode)", true, COLOR_BLOOD_RED)
                     }
                 }
             } catch (t: Throwable) {
                 Log.e(TAG, "Error during capture", t)
                 mainHandler.post {
                     appendLog("Capture exception: ${t.message}")
-                    updateStatus("Capture Error", false, Color.parseColor("#EF4444"))
+                    updateStatus("Capture Error", false, COLOR_BLOOD_RED)
                 }
             }
         }
@@ -621,7 +628,7 @@ class MainActivity : Activity() {
 
     private fun simulateDemoCapture() {
         appendLog("Simulating biometric acquisition pipeline...")
-        updateStatus("Simulating Raw Capture...", true, Color.parseColor("#0284C7"))
+        updateStatus("Simulating Raw Capture...", true, COLOR_BLOOD_RED)
 
         thread {
             val width = 256
@@ -634,7 +641,7 @@ class MainActivity : Activity() {
                 val bitmap = decodeRawToBitmap(rawBytes, width, height)
                 displayFingerprint(bitmap, "${width}x${height} raw 8-bit simulated (${rawBytes.size} bytes)")
                 saveFingerprintToStorage(bitmap, "Simulated")
-                updateStatus("Simulated Capture Saved", true, Color.parseColor("#10B981"))
+                updateStatus("Simulated Capture Saved", true, COLOR_SUCCESS_GREEN)
                 appendLog("Simulated capture successfully decoded & saved to storage.")
             }
         }

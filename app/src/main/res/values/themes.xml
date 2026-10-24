@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <style name="Theme.MorphoScanner" parent="android:Theme.Material.NoActionBar">
-        <item name="android:colorPrimary">@color/primary</item>
-        <item name="android:colorPrimaryDark">@color/bg_dark</item>
-        <item name="android:colorAccent">@color/accent</item>
-        <item name="android:windowBackground">@color/bg_dark</item>
-        <item name="android:statusBarColor">@color/bg_dark</item>
-        <item name="android:navigationBarColor">@color/bg_dark</item>
+        <item name="android:colorPrimary">@color/blood_red</item>
+        <item name="android:colorPrimaryDark">@color/obsidian_black</item>
+        <item name="android:colorAccent">@color/blood_red</item>
+        <item name="android:windowBackground">@color/obsidian_black</item>
+        <item name="android:statusBarColor">@color/obsidian_black</item>
+        <item name="android:navigationBarColor">@color/obsidian_black</item>
     </style>
 </resources>

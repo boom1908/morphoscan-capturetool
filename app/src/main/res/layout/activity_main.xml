@@ -26,16 +26,16 @@
                 android:layout_marginBottom="16dp">
 
                 <ImageView
-                    android:layout_width="40dp"
-                    android:layout_height="40dp"
-                    android:src="@drawable/ic_launcher_foreground"
-                    android:contentDescription="App Icon" />
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:src="@drawable/ic_app_logo"
+                    android:contentDescription="Morpho Biometric Logo" />
 
                 <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:layout_marginStart="12dp"
+                    android:layout_marginStart="14dp"
                     android:orientation="vertical">
 
                     <TextView
@@ -58,11 +58,12 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="VID: 1947"
-                    android:textColor="@color/primary_light"
+                    android:textColor="@color/blood_red"
                     android:textSize="11sp"
-                    android:background="@drawable/bg_card"
-                    android:paddingHorizontal="8dp"
-                    android:paddingVertical="4dp" />
+                    android:textStyle="bold"
+                    android:background="@drawable/bg_chip_button"
+                    android:paddingHorizontal="10dp"
+                    android:paddingVertical="5dp" />
             </LinearLayout>
 
             <!-- Status Card -->
@@ -225,7 +226,7 @@
                     android:layout_height="52dp"
                     android:background="@drawable/bg_button_secondary"
                     android:text="@string/btn_connect"
-                    android:textColor="@color/text_primary"
+                    android:textColor="@color/soft_white"
                     android:textSize="15sp"
                     android:textStyle="bold"
                     android:layout_marginBottom="12dp" />
@@ -236,7 +237,7 @@
                     android:layout_height="52dp"
                     android:background="@drawable/bg_button_primary"
                     android:text="@string/btn_scan"
-                    android:textColor="@color/white"
+                    android:textColor="@color/soft_white"
                     android:textSize="15sp"
                     android:textStyle="bold"
                     android:layout_marginBottom="12dp" />
@@ -247,7 +248,7 @@
                     android:layout_height="44dp"
                     android:background="@drawable/bg_button_secondary"
                     android:text="Simulate Test Scan (Offline / Demo)"
-                    android:textColor="@color/primary_light"
+                    android:textColor="@color/muted_grey"
                     android:textSize="13sp"
                     android:layout_marginBottom="16dp" />
             </LinearLayout>
@@ -297,7 +298,7 @@
                         android:background="@drawable/bg_chip_button"
                         android:text="📋 Copy Logs"
                         android:textAllCaps="false"
-                        android:textColor="@color/primary_light"
+                        android:textColor="@color/soft_white"
                         android:textSize="11sp"
                         android:textStyle="bold"
                         android:paddingHorizontal="12dp"
@@ -310,7 +311,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="Ready. Connect Morpho USB scanner or press Simulate."
-                    android:textColor="#CBD5E1"
+                    android:textColor="#D4D4D8"
                     android:fontFamily="monospace"
                     android:textSize="11sp"
                     android:textIsSelectable="true" />

@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="96dp"
+    android:height="96dp"
+    android:viewportWidth="96"
+    android:viewportHeight="96">
+
+    <!-- Outer Hex-Shield / Biometric Sensor Boundary -->
+    <path
+        android:strokeColor="#8B0000"
+        android:strokeWidth="2.5"
+        android:fillColor="#151518"
+        android:pathData="M48,6 L82,22 L82,56 C82,74 66,88 48,92 C30,88 14,74 14,56 L14,22 Z" />
+
+    <!-- Inner Shield Accent Glow -->
+    <path
+        android:strokeColor="#C1121F"
+        android:strokeWidth="1.2"
+        android:fillColor="#00000000"
+        android:pathData="M48,12 L76,26 L76,54 C76,68 63,80 48,84 C33,80 20,68 20,54 L20,26 Z" />
+
+    <!-- Corner Target Reticles (Soft White & Muted Grey) -->
+    <path
+        android:strokeColor="#85858D"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:pathData="M26,34 L26,26 L34,26" />
+    <path
+        android:strokeColor="#85858D"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:pathData="M70,34 L70,26 L62,26" />
+    <path
+        android:strokeColor="#85858D"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:pathData="M26,62 L26,70 L34,70" />
+    <path
+        android:strokeColor="#85858D"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:pathData="M70,62 L70,70 L62,70" />
+
+    <!-- Optical Target Crosshairs -->
+    <path
+        android:strokeColor="#C1121F"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round"
+        android:pathData="M48,16 L48,22 M48,74 L48,80 M18,48 L24,48 M72,48 L78,48" />
+
+    <!-- Biometric Fingerprint Ridges (Blood Red & Soft White Details) -->
+    <!-- Arc 1 (Outer ridge) -->
+    <path
+        android:strokeColor="#C1121F"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:pathData="M34,48 C34,40.2 40.2,34 48,34 C55.8,34 62,40.2 62,48 C62,54 59,58 59,64" />
+
+    <!-- Arc 2 (Middle ridge) -->
+    <path
+        android:strokeColor="#C1121F"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:pathData="M38,55 C38,44 42,39 48,39 C54,39 57.5,43 57.5,49 C57.5,56 54.5,60 54.5,66" />
+
+    <!-- Arc 3 (Inner core) -->
+    <path
+        android:strokeColor="#F5F5F5"
+        android:strokeWidth="2.2"
+        android:strokeLineCap="round"
+        android:pathData="M43,58 C43,49 45,44 48,44 C51,44 53,47 53,52 C53,58 49,61 49,68" />
+
+    <!-- Center Scanner Focus Dot -->
+    <path
+        android:fillColor="#F5F5F5"
+        android:pathData="M48,51m-2.2,0a2.2,2.2 0 1,0 4.4,0a2.2,2.2 0 1,0 -4.4,0" />
+
+</vector>
